@@ -1,0 +1,34 @@
+#Empty Groups required by playbooks -> Groups are filled by with children from ec2.py dynamic inventory
+[ansibleDemo]
+[grafana]
+[grafanaDb]
+[influxDb]
+
+#The groups defined by aws tags
+[tag_grafana_true]
+[tag_grafanaDb_true]
+[tag_ansibleDemo_true]
+[tag_influxDb_true]
+
+#Include the aws tagged hosts to the static groups used in playbooks
+[ansibleDemo:children]
+tag_ansibleDemo_true
+
+[grafana:children]
+tag_grafana_true
+
+[grafanaDb:children]
+tag_grafanaDb_true
+
+[influxDb:children]
+tag_influxDb_true
+
+#Add group containing all instances
+[dynamic:children]
+ansibleDemo
+grafana
+grafanaDb
+influxDb
+
+[dynamic:vars]
+ansible_python_interpreter=/usr/bin/python3

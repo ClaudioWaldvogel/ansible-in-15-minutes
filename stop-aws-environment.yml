@@ -1,0 +1,89 @@
+- hosts: 127.0.0.1
+  connection: local
+  vars:
+    subnets:
+      ansible-15-a: 11.0.0.0/24
+      ansible-15-b: 11.0.1.0/24
+
+  tasks:
+
+    - ec2_instance:
+        state: absent
+        region: eu-central-1
+        filters:
+          tag:ansibleDemo: 'true'
+      register: demo_instances
+
+
+    - name: Delete ansible demo ec2 key
+      ec2_key:
+        name: ansible-15
+        region: eu-central-1
+        state: absent
+
+    - name: Destroy a ansibel-15 VPC
+      ec2_vpc_net:
+        name: ansible-15-vpc
+        cidr_block: 11.0.0.0/16
+        region: eu-central-1
+        state: present
+        tags:
+          Name: ansible-15
+      register: vpc_result
+
+
+    - name: Destroy ansible-15 subnets subnets
+      ec2_vpc_subnet:
+        state: absent
+        region: eu-central-1
+        vpc_id: "{{ vpc_result.vpc.id }}"
+        cidr: "{{ item.value }}"
+        map_public: yes
+        resource_tags:
+          Name: "{{ item.key }}"
+      with_dict: "{{ subnets }}"
+      register: subnet_result
+
+
+    - name: Destroy ansible-15 igw
+      ec2_vpc_igw:
+        vpc_id: "{{ vpc_result.vpc.id }}"
+        region: eu-central-1
+        state: absent
+        tags:
+          Name: ansible-15-igw
+      register: igw_result
+
+
+    - name: Destroy routables for subnets
+      ec2_vpc_route_table:
+        state: absent
+        vpc_id: "{{ vpc_result.vpc.id }}"
+        region: eu-central-1
+        tags:
+          Name: ansible-15-routtable
+      register: Route tables
+
+
+    - name: Destroy Security Group
+      ec2_group:
+        state: absent
+        name: ansible-15-sg
+        description: ansible-15-sg
+        vpc_id: "{{ vpc_result.vpc.id }}"
+        region: eu-central-1
+        tags:
+          Name: ansible-15-sg
+      register: sg_result
+
+
+    - name: Destroy a ansibel-15 VPC
+      ec2_vpc_net:
+        name: ansible-15-vpc
+        cidr_block: 11.0.0.0/16
+        region: eu-central-1
+        state: absent
+        tags:
+          Name: ansible-15
+      register: vpc_result
+     

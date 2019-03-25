@@ -1,0 +1,6 @@
+grafana_version: 6.1.2
+mysql_user: "mysql"
+mysql_pw: "{{ vault_mysql_pw }}"
+mysql_root_pw: "{{ vault_mysql_pw }}"
+aws_access_key: "{{ vault_aws_access_key }}"
+aws_secret_key: "{{ vault_aws_secret_key }}"

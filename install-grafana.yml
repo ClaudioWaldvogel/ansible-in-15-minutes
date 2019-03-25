@@ -1,0 +1,6 @@
+---
+- hosts: grafana
+  roles:
+    - role: grafana
+      grafana_db_inventory_group: grafanaDb
+      grafana_inventory_group: grafana

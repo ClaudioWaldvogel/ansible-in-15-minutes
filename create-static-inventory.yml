@@ -1,0 +1,44 @@
+---
+- hosts: 127.0.0.1
+  connection: local
+
+  tasks:
+    - name: Gather facts of our ec2 instances
+      ec2_instance_facts:
+        region: eu-central-1
+        filters:
+          tag:ansibleDemo: 'true'
+      register: "ansibleDemo"
+
+    - name: Delete old inventory file
+      file:
+        state: absent
+        path: "inventories/static/static"
+
+    - name: Create static inventory file
+      blockinfile:
+        path: inventories/static/static
+        create: yes
+        block: |
+          [ansibleDemo]
+          {% for item in  ansibleDemo | json_query("instances[].public_ip_address") %}
+          {{ item }}
+          {% endfor %}
+
+          [grafana]
+          {% for item in  ansibleDemo | json_query("instances[].public_ip_address") %}
+          {{ item }}
+          {% endfor %}
+
+          [grafanaDb]
+          {% for item in  ansibleDemo | json_query("instances[?tags.grafanaDb=='true'].public_ip_address") %}
+          {{ item }}
+          {% endfor %}
+
+          [influxDb]
+          {% for item in  ansibleDemo | json_query("instances[?tags.influxDb=='true'].public_ip_address") %}
+          {{ item }}
+          {% endfor %}
+
+          [ansibleDemo:vars]
+          ansible_python_interpreter=/usr/bin/python3

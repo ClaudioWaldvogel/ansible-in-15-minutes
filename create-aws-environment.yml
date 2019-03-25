@@ -1,0 +1,162 @@
+---
+- hosts: 127.0.0.1
+  connection: local
+  vars:
+    subnets:
+      ansible-15-a: 11.0.0.0/24
+      ansible-15-b: 11.0.1.0/24
+
+  tasks:
+
+    - name: Check  if key is already present
+      stat:
+        path: ./ansible-15.pem
+      register: stat_result
+
+    - name: Create ansible demo ec2 key
+      ec2_key:
+        name: ansible-15
+        region: eu-central-1
+        force: false
+      register: ec2_key_result
+      when:
+        - stat_result.stat.exists == False
+
+    - name: Save private key
+      copy: content="{{ ec2_key_result.key.private_key }}" dest="{{ ansible_env.HOME }}/.ssh/ansible-15.pem" mode=0600
+      when:
+        - stat_result.stat.exists == False
+        - ec2_key_result.changed == True
+
+
+    - name: Create a ansibel-15 VPC
+      ec2_vpc_net:
+        name: ansible-15-vpc
+        cidr_block: 11.0.0.0/16
+        region: eu-central-1
+        state: present
+        tags:
+          Name: ansible-15
+      register: vpc_result
+
+    - name: Create ansible 15 Internet Gateway
+      ec2_vpc_igw:
+        vpc_id: "{{ vpc_result.vpc.id }}"
+        region: eu-central-1
+        state: present
+        tags:
+          Name: ansible-15-igw
+      register: igw_result
+
+
+    - name: Create subnets
+      ec2_vpc_subnet:
+        state: present
+        region: eu-central-1
+        vpc_id: "{{ vpc_result.vpc.id }}"
+        cidr: "{{ item.value }}"
+        map_public: yes
+        resource_tags:
+          Name: "{{ item.key }}"
+      with_dict: "{{ subnets }}"
+      register: subnet_result
+
+    - name: Create routables for subnets
+      ec2_vpc_route_table:
+        state: present
+        vpc_id: "{{ vpc_result.vpc.id }}"
+        region: eu-central-1
+        tags:
+          Name: ansible-15-routtable
+        subnets:
+          - "{{ subnet_result.results[0].subnet.id}}"
+          - "{{ subnet_result.results[1].subnet.id }}"
+        routes:
+          - dest: 0.0.0.0/0
+            gateway_id: "{{ igw_result.gateway_id }}"
+      register: public_route_table
+
+    - name: Create Security Group
+      ec2_group:
+        name: ansible-15-sg
+        description: ansible-15-sg
+        vpc_id: "{{ vpc_result.vpc.id }}"
+        region: eu-central-1
+        tags:
+          Name: ansible-15-sg
+      register: sg_result
+
+    - name: Update Security Group
+      ec2_group:
+        state: present
+        name: ansible-15-sg
+        description: ansible-15-sg
+        vpc_id: "{{ vpc_result.vpc.id }}"
+        region: eu-central-1
+        tags:
+          Name: ansible-15-sg
+        rules:
+          - proto: tcp
+            from_port: 3000
+            to_port: 3000
+            cidr_ip: 0.0.0.0/0
+          - proto: tcp
+            from_port: 22
+            to_port: 22
+            cidr_ip: 0.0.0.0/0
+          - proto: tcp
+            from_port: 0
+            to_port: 65535
+            group_id: "{{ sg_result.group_id }}"
+
+      register: sg_result
+
+    - name: Create GrafanaDB Instance
+      ec2:
+        state: present
+        region: eu-central-1
+        key_name: ansible-15
+        group_id: "{{ sg_result.group_id }}"
+        instance_type: t2.micro
+        image: ami-090f10efc254eaf55
+        wait: yes
+        wait_timeout: 500
+        count: 1
+        instance_tags:
+          Name: ansible-15-grafanadb
+          ansibleDemo: "true"
+          grafana: "true"
+          grafanaDb: "true"
+        vpc_subnet_id: "{{ subnet_result.results[0].subnet.id }}"
+        assign_public_ip: yes
+      register: grafana_db_instance
+
+    - name: Print GrafnaDB instance ip
+      debug:
+        msg: "Grafana DB instance IP:  {{ item.public_ip }}"
+      with_items: "{{ grafana_db_instance['instances'] }}"
+
+    - name: Create Influx DB Instance
+      ec2:
+        state: present
+        region: eu-central-1
+        key_name: ansible-15
+        group_id: "{{ sg_result.group_id }}"
+        instance_type: t2.micro
+        image: ami-090f10efc254eaf55
+        wait: yes
+        wait_timeout: 500
+        count: 1
+        instance_tags:
+          Name: ansible-15-influxdb
+          ansibleDemo: "true"
+          grafana: "true"
+          influxDb: "true"
+        vpc_subnet_id: "{{ subnet_result.results[0].subnet.id }}"
+        assign_public_ip: yes
+      register: influx_db_instance
+
+    - name: Print InfluxDB instance ip
+      debug:
+        msg: "Influx DB instance IP:  {{ item.public_ip }}"
+      with_items: "{{ influx_db_instance['instances'] }}"

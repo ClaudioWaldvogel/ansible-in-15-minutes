@@ -1,0 +1,1 @@
+Hello from ansible (Node: {{ inventory_hostname }}). Info: {{ my_param | default('Nope, nothing given!')}}.

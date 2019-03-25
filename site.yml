@@ -1,0 +1,8 @@
+- import_playbook: prepare-hosts.yml
+
+- import_playbook: install-docker.yml
+
+- import_playbook: install-monitoring.yml
+
+- import_playbook: install-grafana.yml
+

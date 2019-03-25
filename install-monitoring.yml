@@ -1,0 +1,52 @@
+---
+- hosts: influxDb
+  tasks:
+    -
+    - name: Creating influx data directory
+      file:
+        path: "/home/ubuntu/influxdb"
+        owner: "ubuntu"
+        group: "ubuntu"
+        state: directory
+        mode: 0755
+
+    - name: Copy influxdb config to remote
+      copy:
+        src: files/influxdb.conf
+        dest: /home/ubuntu/influxdb/influxdb.conf
+
+    - name: Start influxdb container
+      docker_container:
+        name: influxdb
+        image: influxdb:1.7
+        state: started
+        restart_policy: unless-stopped
+        env:
+          INFLUXDB_DB: cadvisor
+        volumes:
+          /home/ubuntu/influxdb/influxdb.conf:/etc/influxdb/influxdb.conf
+        ports:
+          - 8086:8086
+
+
+- hosts: ansibleDemo
+  tasks:
+    - name: Resolve influx private ip adress
+      shell: >
+        curl -s http://169.254.169.254/latest/meta-data/local-ipv4/
+      args:
+        warn: no
+      register: influxDB_ip
+      delegate_to: "{{ groups['influxDb'][0] }}"
+
+
+    - name: Start cadvisor
+      docker_container:
+        name: cadvisor
+        image: google/cadvisor
+        command: "-logtostderr -docker_only -storage_driver=influxdb -storage_driver_db=cadvisor -storage_driver_host={{ influxDB_ip.stdout }}:8086"
+        volumes:
+          - /:/rootfs:ro
+          - /var/run:/var/run:rw
+          - /sys:/sys:ro
+          - /var/lib/docker/:/var/lib/docker:ro

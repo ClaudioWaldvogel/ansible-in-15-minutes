@@ -1,0 +1,26 @@
+---
+- hosts: ansibleDemo
+  tasks:
+
+    - name: Update repositories cache and install "python3-pip" package
+      apt:
+        name: python3-pip
+        update_cache: yes
+
+    - name: Install python packages
+      pip:
+        name: "{{ item }}"
+      with_items:
+        - docker-py
+
+    - name: Ensures .aws dir exists
+      file: path=/home/ubuntu/.aws state=directory
+
+    - name: Distribute AWS CLI Credentials
+      copy:
+        content: |
+          [default]
+          aws_access_key_id={{ aws_access_key}}
+          aws_secret_access_key={{ aws_secret_key }}
+        dest: /home/ubuntu/.aws/credentials
+        mode: 0644

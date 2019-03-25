@@ -1,0 +1,25 @@
+---
+
+  - name: Resolve influx private ip address
+    delegate_to: "{{ groups[grafana_db_inventory_group][0] }}"
+    run_once: true
+    shell: >
+      curl -s http://169.254.169.254/latest/meta-data/local-ipv4/
+    args:
+      warn: no
+    register: mysql_ip
+
+  - name: "{{ grafana_inventory_group }}"
+    docker_container:
+      name: grafana
+      image: "grafana/grafana:{{ grafana_version }}"
+      state: started
+      restart_policy: unless-stopped
+      env:
+        GF_DATABASE_TYPE: "mysql"
+        GF_DATABASE_HOST: "{{ mysql_ip.stdout }}:{{ grafana_db_port }}"
+        GF_DATABASE_USER: "{{ mysql_grafana_db_user}}"
+        GF_DATABASE_PASSWORD: "{{ mysql_pw }}"
+        GF_DATABASE_MAX_IDLE_CONN: 0
+      ports:
+        - 3000:3000

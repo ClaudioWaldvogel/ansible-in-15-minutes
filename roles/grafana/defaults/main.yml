@@ -1,0 +1,10 @@
+---
+# defaults file for grafana
+grafana_version: 6.1.2
+mysql_version: 5
+mysql_grafana_db: grafana
+mysql_grafana_db_user: grafana
+mysql_pw: ""
+grafana_inventory_group: "grafana"
+grafana_db_inventory_group: "grafanaDb"
+grafana_db_port: 3306

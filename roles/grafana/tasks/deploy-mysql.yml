@@ -1,0 +1,16 @@
+---
+  - name: Create MySql Container
+    delegate_to: "{{ groups[grafana_db_inventory_group][0] }}"
+    run_once: true
+    docker_container:
+      name: mysql
+      image: "mysql:{{ mysql_version }}"
+      state: started
+      restart_policy: unless-stopped
+      env:
+        MYSQL_ROOT_PASSWORD: "{{ mysql_pw }}"
+        MYSQL_DATABASE: "{{ mysql_grafana_db}}"
+        MYSQL_USER: "{{ mysql_grafana_db_user}}"
+        MYSQL_PASSWORD: "{{ mysql_pw }}"
+      ports:
+        - 3306:3306
